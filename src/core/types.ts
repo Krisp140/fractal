@@ -25,3 +25,26 @@ export interface IFSSystem {
   name: string;
   maps: AffineMap[];
 }
+
+/**
+ * Raymarched 3D Fractal types
+ */
+export enum Fractal3DType {
+  Mandelbulb = 0,
+  Mandelbox = 1,
+  MengerSponge = 2,
+  JuliaSet = 3,
+}
+
+/**
+ * Raymarched 3D Fractal configuration
+ */
+export interface Fractal3D {
+  name: string;
+  type: Fractal3DType;
+  power?: number;        // For Mandelbulb
+  scale?: number;        // For Mandelbox
+  foldingLimit?: number; // For Mandelbox
+  defaultCameraPos?: [number, number, number];
+  defaultCameraTarget?: [number, number, number];
+}

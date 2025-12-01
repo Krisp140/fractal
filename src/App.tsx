@@ -1,8 +1,10 @@
-import { useControls, button } from 'leva';
+import { useControls, button, folder } from 'leva';
 import { useState, useEffect } from 'react';
-import { FractalCanvas } from './components/FractalCanvas';
+import { FractalCanvas2D } from './components/FractalCanvas2D';
+import { FractalCanvas3D } from './components/FractalCanvas3D';
 import { presets, defaultPreset } from './core/presets';
 import { colorPalettes, defaultPalette } from './core/colorPalettes';
+import { presets3D, defaultPreset3D } from './core/presets3D';
 import { IFSSystem } from './core/types';
 import { morphIFSSystems } from './core/morphing';
 import { Leva } from 'leva';
@@ -38,21 +40,93 @@ function App() {
   const [dmtModeActive, setDmtModeActive] = useState(false);
   const [forceRandomPreset, setForceRandomPreset] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(defaultPreset.name);
+  const [selectedPreset3D, setSelectedPreset3D] = useState(defaultPreset3D.name);
+  const [renderMode, setRenderMode] = useState<'2d' | '3d'>('2d');
 
   const config = useControls({
-    preset: {
-      value: selectedPreset,
-      options: ['Random', ...presets.map(p => p.name)],
+    mode: {
+      value: '2D IFS',
+      options: ['2D IFS', '3D Raymarch'],
+      label: 'Renderer Mode',
+      onChange: (value) => {
+        const newMode = value === '2D IFS' ? '2d' : '3d';
+        setRenderMode(newMode);
+        // Turn off DMT mode when switching to 3D
+        if (newMode === '3d') {
+          setDmtModeActive(false);
+        }
+      },
     },
-    randomize: button(() => {
-      const randomSystem = generateRandomIFS();
-      setCustomSystem(randomSystem);
-      setForceRandomPreset(true);
-      console.log('Generated random fractal:', randomSystem);
+    '2D Settings': folder({
+      preset: {
+        value: selectedPreset,
+        options: ['Random', ...presets.map(p => p.name)],
+        render: (get) => get('mode') === '2D IFS',
+      },
+      randomize: button(() => {
+        const randomSystem = generateRandomIFS();
+        setCustomSystem(randomSystem);
+        setForceRandomPreset(true);
+        console.log('Generated random fractal:', randomSystem);
+      }, {
+        disabled: renderMode !== '2d',
+      }),
     }),
-    dmtMode: button(() => {
-      setDmtModeActive(prev => !prev);
+    '3D Settings': folder({
+      preset3D: {
+        value: selectedPreset3D,
+        options: presets3D.map(p => p.name),
+        label: 'Preset',
+        render: (get) => get('mode') === '3D Raymarch',
+        onChange: (value) => setSelectedPreset3D(value),
+      },
+      power: {
+        value: 8.0,
+        min: 2,
+        max: 16,
+        step: 0.1,
+        label: 'Power (Mandelbulb)',
+        render: (get) => get('mode') === '3D Raymarch' && get('preset3D') === 'Mandelbulb',
+      },
+      scale: {
+        value: 2.0,
+        min: 0.5,
+        max: 4.0,
+        step: 0.1,
+        label: 'Scale (Mandelbox)',
+        render: (get) => get('mode') === '3D Raymarch' && get('preset3D') === 'Mandelbox',
+      },
+      foldingLimit: {
+        value: 1.0,
+        min: 0.1,
+        max: 2.0,
+        step: 0.1,
+        label: 'Folding (Mandelbox)',
+        render: (get) => get('mode') === '3D Raymarch' && get('preset3D') === 'Mandelbox',
+      },
+      glow: {
+        value: 0.0,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        label: 'Glow',
+        render: (get) => get('mode') === '3D Raymarch',
+      },
+      maxIterations: {
+        value: 15,
+        min: 5,
+        max: 30,
+        step: 1,
+        label: 'Max Iterations',
+        render: (get) => get('mode') === '3D Raymarch',
+      },
     }),
+    dmtMode: {
+      ...button(() => {
+        setDmtModeActive(prev => !prev);
+      }),
+      render: (get) => get('mode') === '2D IFS',
+    },
     colorPalette: {
       value: defaultPalette.name,
       options: ['Custom', ...colorPalettes.map(p => p.name)],
@@ -73,6 +147,7 @@ function App() {
     infiniteAccumulation: {
       value: false,
       label: 'Infinite Accumulation',
+      render: (get) => get('mode') === '2D IFS',
     },
     iterationsPerFrame: {
       value: 10000,
@@ -80,18 +155,22 @@ function App() {
       max: 100000,
       step: 1000,
       label: 'Iterations/Frame',
+      render: (get) => get('mode') === '2D IFS',
     },
     animationMode: {
       value: false,
       label: 'Auto Animate',
+      render: (get) => get('mode') === '2D IFS',
     },
     psychedelicMode: {
       value: false,
       label: 'Psychedelic Mode',
+      render: (get) => get('mode') === '2D IFS',
     },
     morphMode: {
       value: false,
       label: 'Fractal Morphing',
+      render: (get) => get('mode') === '2D IFS',
     },
     morphSpeed: {
       value: 1.0,
@@ -99,16 +178,17 @@ function App() {
       max: 5.0,
       step: 0.1,
       label: 'Morph Speed',
-      render: (get) => get('morphMode'),
+      render: (get) => get('mode') === '2D IFS' && get('morphMode'),
     },
     rotation: {
       value: false,
       label: 'Rotation',
-      render: (get) => get('animationMode') || get('psychedelicMode'),
+      render: (get) => get('mode') === '2D IFS' && (get('animationMode') || get('psychedelicMode')),
     },
     kaleidoscope: {
       value: false,
       label: 'Kaleidoscope',
+      render: (get) => get('mode') === '2D IFS',
     },
     kaleidoscopeSegments: {
       value: 6,
@@ -116,11 +196,12 @@ function App() {
       max: 12,
       step: 1,
       label: 'K-Segments',
-      render: (get) => get('kaleidoscope'),
+      render: (get) => get('mode') === '2D IFS' && get('kaleidoscope'),
     },
     trails: {
       value: false,
       label: 'Motion Trails',
+      render: (get) => get('mode') === '2D IFS',
     },
     trailDecay: {
       value: 0.95,
@@ -128,7 +209,7 @@ function App() {
       max: 0.99,
       step: 0.01,
       label: 'Trail Decay',
-      render: (get) => get('trails'),
+      render: (get) => get('mode') === '2D IFS' && get('trails'),
     },
     chromaticAberration: {
       value: 0,
@@ -136,12 +217,14 @@ function App() {
       max: 10,
       step: 0.5,
       label: 'Chromatic Aberration',
+      render: (get) => get('mode') === '2D IFS',
     },
     zoom: {
       value: 1.0,
       min: 0.1,
       max: 10,
       step: 0.1,
+      render: (get) => get('mode') === '2D IFS',
     },
     panX: {
       value: 0,
@@ -149,6 +232,7 @@ function App() {
       max: 2,
       step: 0.01,
       label: 'Pan X',
+      render: (get) => get('mode') === '2D IFS',
     },
     panY: {
       value: 0,
@@ -156,16 +240,19 @@ function App() {
       max: 2,
       step: 0.01,
       label: 'Pan Y',
+      render: (get) => get('mode') === '2D IFS',
     },
     brightness: {
       value: 100,
       min: 1,
       max: 1000,
       step: 1,
+      render: (get) => get('mode') === '2D IFS',
     },
     bloom: {
       value: false,
       label: 'Bloom Effect',
+      render: (get) => get('mode') === '2D IFS',
     },
     bloomIntensity: {
       value: 0.5,
@@ -173,7 +260,7 @@ function App() {
       max: 2,
       step: 0.1,
       label: 'Bloom Intensity',
-      render: (get) => get('bloom'),
+      render: (get) => get('mode') === '2D IFS' && get('bloom'),
     },
     bloomThreshold: {
       value: 0.5,
@@ -181,7 +268,7 @@ function App() {
       max: 1,
       step: 0.05,
       label: 'Bloom Threshold',
-      render: (get) => get('bloom'),
+      render: (get) => get('mode') === '2D IFS' && get('bloom'),
     },
     colorLow: {
       value: defaultPalette.low,
@@ -195,8 +282,8 @@ function App() {
     },
   });
 
-  // DMT mode overrides - merge with config
-  const activeConfig = dmtModeActive ? {
+  // DMT mode overrides - only apply in 2D mode
+  const activeConfig = (dmtModeActive && renderMode === '2d') ? {
     ...config,
     psychedelicMode: true,
     animationMode: true,
@@ -375,7 +462,8 @@ function App() {
     }
   }
 
-  const rendererConfig = {
+  // 2D Renderer Config
+  const rendererConfig2D = {
     system: selectedSystem,
     iterationsPerFrame: Math.max(1000, iterations),
     zoom,
@@ -395,6 +483,22 @@ function App() {
     chromaticAberration: activeConfig.chromaticAberration,
   };
 
+  // 3D Renderer Config
+  const selected3DFractal = presets3D.find(p => p.name === selectedPreset3D) || defaultPreset3D;
+  const rendererConfig3D = {
+    fractal: selected3DFractal,
+    cameraPos: selected3DFractal.defaultCameraPos || [0, 0, 3] as [number, number, number],
+    cameraTarget: selected3DFractal.defaultCameraTarget || [0, 0, 0] as [number, number, number],
+    colorLow,
+    colorHigh,
+    glow: config.glow || 0,
+    maxIterations: config.maxIterations || 15,
+    bailout: 2.0,
+    power: config.power,
+    scale: config.scale,
+    foldingLimit: config.foldingLimit,
+  };
+
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       <Leva
@@ -405,7 +509,11 @@ function App() {
           }
         }}
       />
-      <FractalCanvas config={rendererConfig} />
+      {renderMode === '2d' ? (
+        <FractalCanvas2D config={rendererConfig2D} />
+      ) : (
+        <FractalCanvas3D config={rendererConfig3D} />
+      )}
     </div>
   );
 }
