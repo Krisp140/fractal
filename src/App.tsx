@@ -112,7 +112,7 @@ function App() {
         label: 'Glow',
         render: (get) => get('mode') === '3D Raymarch',
       },
-      maxIterations: {
+      maxIterations3D: {
         value: 15,
         min: 5,
         max: 30,
@@ -149,13 +149,26 @@ function App() {
       label: 'Infinite Accumulation',
       render: (get) => get('mode') === '2D IFS',
     },
-    iterationsPerFrame: {
-      value: 10000,
-      min: 1000,
-      max: 100000,
-      step: 1000,
-      label: 'Iterations/Frame',
+    adaptiveDetail: {
+      value: true,
+      label: 'Adaptive Detail (∞)',
       render: (get) => get('mode') === '2D IFS',
+    },
+    baseIterationsK: {
+      value: 50,
+      min: 1,
+      max: 100,
+      step: 1,
+      label: 'Base Iterations (k)',
+      render: (get) => get('mode') === '2D IFS',
+    },
+    maxIterationsK: {
+      value: 500,
+      min: 50,
+      max: 2000,
+      step: 50,
+      label: 'Max Iterations (k)',
+      render: (get) => get('mode') === '2D IFS' && get('adaptiveDetail'),
     },
     animationMode: {
       value: false,
@@ -418,7 +431,7 @@ function App() {
   let zoom = activeConfig.zoom;
   let panX = activeConfig.panX;
   let panY = activeConfig.panY;
-  let iterations = activeConfig.iterationsPerFrame;
+  let iterations = (activeConfig.baseIterationsK || 50) * 1000;
   let brightness = activeConfig.brightness;
   let bloomIntensity = activeConfig.bloomIntensity;
   let rotation = 0;
@@ -437,7 +450,7 @@ function App() {
       panY = activeConfig.panY + Math.cos(t * 0.7) * spiralRadius + Math.sin(t * 1.5) * 0.1;
 
       // Pulsing iterations for density changes
-      const iterBase = activeConfig.iterationsPerFrame;
+      const iterBase = (activeConfig.baseIterationsK || 50) * 1000;
       iterations = Math.floor(iterBase * (0.7 + Math.sin(t) * 0.3));
 
       // Breathing brightness
@@ -481,6 +494,8 @@ function App() {
     trails: activeConfig.trails,
     trailDecay: activeConfig.trailDecay,
     chromaticAberration: activeConfig.chromaticAberration,
+    adaptiveDetail: activeConfig.adaptiveDetail,
+    maxIterations: (activeConfig.maxIterationsK || 500) * 1000,
   };
 
   // 3D Renderer Config
@@ -492,7 +507,7 @@ function App() {
     colorLow,
     colorHigh,
     glow: config.glow || 0,
-    maxIterations: config.maxIterations || 15,
+    maxIterations: config.maxIterations3D || 15,
     bailout: 2.0,
     power: config.power,
     scale: config.scale,

@@ -27,6 +27,8 @@ export interface FractalRendererConfig {
   trails?: boolean;
   trailDecay?: number;
   chromaticAberration?: number;
+  adaptiveDetail?: boolean;
+  maxIterations?: number;
 }
 
 export function useFractalRenderer(
@@ -114,12 +116,21 @@ export function useFractalRenderer(
 
     const scene = sceneRef.current;
 
-    console.log('Creating point cloud with', config.iterationsPerFrame, 'iterations');
+    // Calculate actual iterations based on zoom (for infinite detail)
+    // Only increase detail when zooming in (zoom > 1), never decrease below base
+    const baseIterations = config.iterationsPerFrame;
+    const maxIterations = config.maxIterations || 500000; // Safety cap
+    const zoomFactor = Math.max(1.0, config.zoom); // Don't reduce detail when zoomed out
+    const actualIterations = config.adaptiveDetail
+      ? Math.min(maxIterations, Math.floor(baseIterations * zoomFactor * zoomFactor))
+      : baseIterations;
+
+    console.log('Creating point cloud with', actualIterations, 'iterations (base:', baseIterations, 'zoom:', config.zoom, ')');
     console.log('System:', config.system.name, 'with', config.system.maps.length, 'maps');
     console.log('First map matrix:', config.system.maps[0].matrix);
 
     // Generate points (convert 2D to 3D by adding z=0)
-    const { positions: points2D, colors } = generatePointBatch(config.system, config.iterationsPerFrame);
+    const { positions: points2D, colors } = generatePointBatch(config.system, actualIterations);
     const points3D = new Float32Array(points2D.length / 2 * 3);
     for (let i = 0; i < points2D.length / 2; i++) {
       points3D[i * 3] = points2D[i * 2];      // x
@@ -167,7 +178,7 @@ export function useFractalRenderer(
         (pointsRef.current.material as THREE.Material).dispose();
       }
     };
-  }, [config.system, config.iterationsPerFrame]);
+  }, [config.system, config.iterationsPerFrame, config.zoom, config.adaptiveDetail, config.maxIterations]);
 
   // Create display quad once
   useEffect(() => {
