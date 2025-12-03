@@ -117,19 +117,18 @@ export function useFractalRenderer(
     const scene = sceneRef.current;
 
     // Calculate actual iterations based on zoom (for infinite detail)
-    // Only increase detail when zooming in (zoom > 1), never decrease below base
+    // Scale with zoom^2.5 for more aggressive detail increase
     const baseIterations = config.iterationsPerFrame;
-    const maxIterations = config.maxIterations || 500000; // Safety cap
-    const zoomFactor = Math.max(1.0, config.zoom); // Don't reduce detail when zoomed out
+    const maxIterations = config.maxIterations || 1000000; // Safety cap
     const actualIterations = config.adaptiveDetail
-      ? Math.min(maxIterations, Math.floor(baseIterations * zoomFactor * zoomFactor))
+      ? Math.min(maxIterations, Math.floor(baseIterations * Math.pow(config.zoom, 2.5)))
       : baseIterations;
 
-    console.log('Creating point cloud with', actualIterations, 'iterations (base:', baseIterations, 'zoom:', config.zoom, ')');
+    console.log('Creating point cloud with', actualIterations, 'iterations (base:', baseIterations, 'zoom:', config.zoom, 'pan:', config.pan, ')');
     console.log('System:', config.system.name, 'with', config.system.maps.length, 'maps');
-    console.log('First map matrix:', config.system.maps[0].matrix);
 
-    // Generate points (convert 2D to 3D by adding z=0)
+    // Generate points using the original IFS system
+    // When zooming in, more points reveal finer detail in the fractal structure
     const { positions: points2D, colors } = generatePointBatch(config.system, actualIterations);
     const points3D = new Float32Array(points2D.length / 2 * 3);
     for (let i = 0; i < points2D.length / 2; i++) {
@@ -178,7 +177,18 @@ export function useFractalRenderer(
         (pointsRef.current.material as THREE.Material).dispose();
       }
     };
-  }, [config.system, config.iterationsPerFrame, config.zoom, config.adaptiveDetail, config.maxIterations]);
+  }, [
+    config.system,
+    config.iterationsPerFrame,
+    config.adaptiveDetail,
+    config.maxIterations,
+    // When adaptive detail is on, regenerate when zoom changes (to generate more/fewer points)
+    config.adaptiveDetail ? config.zoom : null,
+    // Include zoom and pan so we read current values when regenerating
+    config.zoom,
+    config.pan[0],
+    config.pan[1],
+  ]);
 
   // Create display quad once
   useEffect(() => {
@@ -247,19 +257,28 @@ export function useFractalRenderer(
   }, [config]);
 
   // Clear accumulation buffer when system changes or infinite mode is toggled off
+  // Track previous system to avoid clearing on iteration changes
+  const prevSystemRef = useRef<IFSSystem | null>(null);
+
   useEffect(() => {
     if (!rendererRef.current || !accumTargetRef.current) return;
 
     const renderer = rendererRef.current;
     const accumTarget = accumTargetRef.current;
 
-    // Clear buffer on system change or when turning off infinite accumulation
-    renderer.setRenderTarget(accumTarget);
-    renderer.clear();
-    renderer.setRenderTarget(null);
+    // Only clear buffer if the system actually changed (not just iterations/zoom)
+    const systemChanged = prevSystemRef.current && prevSystemRef.current.name !== config.system.name;
+    const shouldClear = systemChanged || config.infiniteAccumulation === false;
 
-    console.log('Cleared accumulation buffer');
-  }, [config.system, config.infiniteAccumulation === false]);
+    if (shouldClear) {
+      renderer.setRenderTarget(accumTarget);
+      renderer.clear();
+      renderer.setRenderTarget(null);
+      console.log('Cleared accumulation buffer');
+    }
+
+    prevSystemRef.current = config.system;
+  }, [config.system, config.infiniteAccumulation]);
 
   // Render loop
   useEffect(() => {

@@ -56,20 +56,22 @@ export function FractalCanvas2D({ config, onPanChange, onZoomChange }: FractalCa
 
     setLocalPan(newPan);
     setDragStart({ x: e.clientX, y: e.clientY });
+
+    // Update parent immediately during drag
+    if (onPanChange) {
+      onPanChange(newPan);
+    }
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
-    if (onPanChange) {
-      onPanChange(localPan);
-    }
   };
 
   // Scroll to zoom
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.max(0.1, Math.min(10, localZoom * delta));
+    const newZoom = Math.max(0.1, Math.min(100, localZoom * delta));
     setLocalZoom(newZoom);
     if (onZoomChange) {
       onZoomChange(newZoom);

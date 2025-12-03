@@ -142,7 +142,7 @@ export function FractalCanvas({
 
     if (mode === '2d') {
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newZoom = Math.max(0.1, Math.min(10, localZoom * delta));
+      const newZoom = Math.max(0.1, Math.min(100, localZoom * delta));
       setLocalZoom(newZoom);
       if (onZoomChange) {
         onZoomChange(newZoom);

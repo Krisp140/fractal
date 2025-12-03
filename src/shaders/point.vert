@@ -10,9 +10,9 @@ void main() {
 
   gl_Position = vec4(transformed, 0.0, 1.0);
 
-  // Scale point size with zoom to maintain visibility
-  // At zoom < 1, keep points at least 1px; at zoom > 1, make them larger
-  gl_PointSize = max(1.0, uZoom);
+  // Keep point size at 1px for clean rendering
+  // (When using adaptive detail, point density increases instead of point size)
+  gl_PointSize = 1.0;
 
   // Pass color to fragment shader (default to white if not provided)
   vColor = color.x > 0.0 || color.y > 0.0 || color.z > 0.0 ? color : vec3(1.0);

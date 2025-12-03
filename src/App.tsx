@@ -1,5 +1,5 @@
 import { useControls, button, folder } from 'leva';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FractalCanvas2D } from './components/FractalCanvas2D';
 import { FractalCanvas3D } from './components/FractalCanvas3D';
 import { presets, defaultPreset } from './core/presets';
@@ -43,7 +43,24 @@ function App() {
   const [selectedPreset3D, setSelectedPreset3D] = useState(defaultPreset3D.name);
   const [renderMode, setRenderMode] = useState<'2d' | '3d'>('2d');
 
-  const config = useControls({
+  // Use refs to persist zoom and pan - these NEVER reset
+  const zoomRef = useRef(1.0);
+  const panXRef = useRef(0);
+  const panYRef = useRef(0);
+
+  // Callbacks to handle mouse zoom/pan - update both Leva sliders and refs
+  const handleZoomChange = (newZoom: number) => {
+    zoomRef.current = newZoom;
+    set({ zoom: newZoom });
+  };
+
+  const handlePanChange = (newPan: [number, number]) => {
+    panXRef.current = newPan[0];
+    panYRef.current = newPan[1];
+    set({ panX: newPan[0], panY: newPan[1] });
+  };
+
+  const [config, set] = useControls(() => ({
     mode: {
       value: '2D IFS',
       options: ['2D IFS', '3D Raymarch'],
@@ -155,18 +172,18 @@ function App() {
       render: (get) => get('mode') === '2D IFS',
     },
     baseIterationsK: {
-      value: 50,
-      min: 1,
-      max: 100,
-      step: 1,
+      value: 100,
+      min: 10,
+      max: 200,
+      step: 10,
       label: 'Base Iterations (k)',
       render: (get) => get('mode') === '2D IFS',
     },
     maxIterationsK: {
-      value: 500,
-      min: 50,
-      max: 2000,
-      step: 50,
+      value: 1000,
+      min: 100,
+      max: 3000,
+      step: 100,
       label: 'Max Iterations (k)',
       render: (get) => get('mode') === '2D IFS' && get('adaptiveDetail'),
     },
@@ -235,7 +252,7 @@ function App() {
     zoom: {
       value: 1.0,
       min: 0.1,
-      max: 10,
+      max: 100,
       step: 0.1,
       render: (get) => get('mode') === '2D IFS',
     },
@@ -293,7 +310,7 @@ function App() {
       label: 'Color (High)',
       render: (get) => get('colorPalette') === 'Custom',
     },
-  });
+  }));
 
   // DMT mode overrides - only apply in 2D mode
   const activeConfig = (dmtModeActive && renderMode === '2d') ? {
@@ -427,11 +444,23 @@ function App() {
     colorHigh = shiftColor(colorHigh, hueShift);
   }
 
-  // Apply auto-animation to zoom/pan/everything if enabled
-  let zoom = activeConfig.zoom;
-  let panX = activeConfig.panX;
-  let panY = activeConfig.panY;
-  let iterations = (activeConfig.baseIterationsK || 50) * 1000;
+  // Update refs when Leva controls change (but refs don't trigger re-renders)
+  // This way we capture the latest user input
+  if (activeConfig.zoom !== undefined && activeConfig.zoom !== zoomRef.current) {
+    zoomRef.current = activeConfig.zoom;
+  }
+  if (activeConfig.panX !== undefined && activeConfig.panX !== panXRef.current) {
+    panXRef.current = activeConfig.panX;
+  }
+  if (activeConfig.panY !== undefined && activeConfig.panY !== panYRef.current) {
+    panYRef.current = activeConfig.panY;
+  }
+
+  // Always use ref values (which persist across renders) instead of Leva values
+  let zoom = zoomRef.current;
+  let panX = panXRef.current;
+  let panY = panYRef.current;
+  let iterations = (activeConfig.baseIterationsK || 100) * 1000;
   let brightness = activeConfig.brightness;
   let bloomIntensity = activeConfig.bloomIntensity;
   let rotation = 0;
@@ -450,7 +479,7 @@ function App() {
       panY = activeConfig.panY + Math.cos(t * 0.7) * spiralRadius + Math.sin(t * 1.5) * 0.1;
 
       // Pulsing iterations for density changes
-      const iterBase = (activeConfig.baseIterationsK || 50) * 1000;
+      const iterBase = (activeConfig.baseIterationsK || 100) * 1000;
       iterations = Math.floor(iterBase * (0.7 + Math.sin(t) * 0.3));
 
       // Breathing brightness
@@ -495,7 +524,7 @@ function App() {
     trailDecay: activeConfig.trailDecay,
     chromaticAberration: activeConfig.chromaticAberration,
     adaptiveDetail: activeConfig.adaptiveDetail,
-    maxIterations: (activeConfig.maxIterationsK || 500) * 1000,
+    maxIterations: (activeConfig.maxIterationsK || 1000) * 1000,
   };
 
   // 3D Renderer Config
@@ -525,7 +554,11 @@ function App() {
         }}
       />
       {renderMode === '2d' ? (
-        <FractalCanvas2D config={rendererConfig2D} />
+        <FractalCanvas2D
+          config={rendererConfig2D}
+          onZoomChange={handleZoomChange}
+          onPanChange={handlePanChange}
+        />
       ) : (
         <FractalCanvas3D config={rendererConfig3D} />
       )}
