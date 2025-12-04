@@ -8,6 +8,8 @@ import { IFSSystem } from './types';
  */
 export const sierpinski: IFSSystem = {
   name: "Sierpiński Triangle",
+  scale: 1.0,
+  center: [0, 0],
   maps: [
     {
       matrix: [0.5, 0, 0, 0.5],
@@ -33,6 +35,8 @@ export const sierpinski: IFSSystem = {
  */
 export const barnsleyFern: IFSSystem = {
   name: "Barnsley Fern",
+  scale: 0.18,        // Fern is tall, scale down significantly
+  center: [0, -0.5],  // Center it vertically
   maps: [
     {
       matrix: [0, 0, 0, 0.16],
@@ -63,6 +67,8 @@ export const barnsleyFern: IFSSystem = {
  */
 export const dragonCurve: IFSSystem = {
   name: "Dragon Curve",
+  scale: 1.2,         // Slightly larger
+  center: [-0.2, -0.2],
   maps: [
     {
       matrix: [0.5, -0.5, 0.5, 0.5],
@@ -83,6 +89,8 @@ export const dragonCurve: IFSSystem = {
  */
 export const sierpinskiCarpet: IFSSystem = {
   name: "Sierpiński Carpet",
+  scale: 1.0,
+  center: [0, 0],
   maps: [
     { matrix: [1/3, 0, 0, 1/3], translation: [-0.6, -0.6], probability: 1/8 },
     { matrix: [1/3, 0, 0, 1/3], translation: [0, -0.6], probability: 1/8 },
@@ -101,6 +109,8 @@ export const sierpinskiCarpet: IFSSystem = {
  */
 export const mapleLeaf: IFSSystem = {
   name: "Maple Leaf",
+  scale: 0.25,        // Large bounds, scale down
+  center: [0, 0],
   maps: [
     {
       matrix: [0.14, 0.01, 0, 0.51],
@@ -131,6 +141,8 @@ export const mapleLeaf: IFSSystem = {
  */
 export const spiral: IFSSystem = {
   name: "Spiral",
+  scale: 0.08,         // Very large bounds, scale way down
+  center: [0, -0.3],
   maps: [
     {
       matrix: [0.787879, -0.424242, 0.242424, 0.859848],
@@ -155,6 +167,8 @@ export const spiral: IFSSystem = {
  */
 export const kochVariant: IFSSystem = {
   name: "Koch Variant",
+  scale: 1.2,
+  center: [0, 0],
   maps: [
     {
       matrix: [1/3, 0, 0, 1/3],
@@ -185,6 +199,8 @@ export const kochVariant: IFSSystem = {
  */
 export const tree: IFSSystem = {
   name: "Tree",
+  scale: 0.7,          // Tree is smaller, scale up slightly
+  center: [0, -0.3],   // Center it
   maps: [
     {
       matrix: [0.05, 0, 0, 0.6],
@@ -214,6 +230,8 @@ export const tree: IFSSystem = {
  */
 export const rainbowSierpinski: IFSSystem = {
   name: "Rainbow Sierpiński",
+  scale: 1.0,
+  center: [0, 0],
   maps: [
     {
       matrix: [0.5, 0, 0, 0.5],

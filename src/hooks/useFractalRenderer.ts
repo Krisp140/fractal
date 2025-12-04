@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { IFSSystem } from '../core/types';
-import { generatePointBatch } from '../core/chaosGame';
+import { IFSSystem, MobiusSystem } from '../core/types';
+import { generatePointBatch, generateMobiusPointBatch } from '../core/chaosGame';
 
 // Import shaders as strings
 import pointVertexShader from '../shaders/point.vert';
@@ -10,7 +10,8 @@ import commonVertexShader from '../shaders/common.vert';
 import tonemapFragmentShader from '../shaders/tonemap.frag';
 
 export interface FractalRendererConfig {
-  system: IFSSystem;
+  system: IFSSystem | MobiusSystem;
+  systemType?: 'affine' | 'mobius';  // Type of system (default: 'affine')
   iterationsPerFrame: number;
   zoom: number;
   pan: [number, number];
@@ -29,6 +30,24 @@ export interface FractalRendererConfig {
   chromaticAberration?: number;
   adaptiveDetail?: boolean;
   maxIterations?: number;
+  // NEW PSYCHEDELIC EFFECTS
+  time?: number;
+  spiralDistortion?: number;
+  radialPulse?: number;
+  waveDistortion?: number;
+  tunnelEffect?: number;
+  prismEffect?: number;
+  mirrorDimensions?: number;
+  colorShift?: number;
+  invertPulse?: number;
+  edgeGlow?: number;
+  fractalNoise?: number;
+  kaleidoscopeRotation?: number;
+  feedbackZoom?: number;
+  ripple?: number;
+  pixelate?: number;
+  posterize?: number;
+  backgroundMode?: number;  // 0=simple, 1=plasma, 2=flow, 3=geometry, 4=starfield, 5=nebula
 }
 
 export function useFractalRenderer(
@@ -125,11 +144,12 @@ export function useFractalRenderer(
       : baseIterations;
 
     console.log('Creating point cloud with', actualIterations, 'iterations (base:', baseIterations, 'zoom:', config.zoom, 'pan:', config.pan, ')');
-    console.log('System:', config.system.name, 'with', config.system.maps.length, 'maps');
+    console.log('System:', config.system.name, 'type:', config.systemType || 'affine');
 
-    // Generate points using the original IFS system
-    // When zooming in, more points reveal finer detail in the fractal structure
-    const { positions: points2D, colors } = generatePointBatch(config.system, actualIterations);
+    // Generate points using the appropriate chaos game
+    const { positions: points2D, colors } = config.systemType === 'mobius'
+      ? generateMobiusPointBatch(config.system as MobiusSystem, actualIterations)
+      : generatePointBatch(config.system as IFSSystem, actualIterations);
     const points3D = new Float32Array(points2D.length / 2 * 3);
     for (let i = 0; i < points2D.length / 2; i++) {
       points3D[i * 3] = points2D[i * 2];      // x
@@ -218,6 +238,24 @@ export function useFractalRenderer(
         uKaleidoscope: { value: config.kaleidoscope || false },
         uKaleidoscopeSegments: { value: config.kaleidoscopeSegments || 6 },
         uChromaticAberration: { value: config.chromaticAberration || 0 },
+        // NEW PSYCHEDELIC UNIFORMS
+        uTime: { value: config.time || 0 },
+        uSpiralDistortion: { value: config.spiralDistortion || 0 },
+        uRadialPulse: { value: config.radialPulse || 0 },
+        uWaveDistortion: { value: config.waveDistortion || 0 },
+        uTunnelEffect: { value: config.tunnelEffect || 0 },
+        uPrismEffect: { value: config.prismEffect || 0 },
+        uMirrorDimensions: { value: config.mirrorDimensions || 0 },
+        uColorShift: { value: config.colorShift || 0 },
+        uInvertPulse: { value: config.invertPulse || 0 },
+        uEdgeGlow: { value: config.edgeGlow || 0 },
+        uFractalNoise: { value: config.fractalNoise || 0 },
+        uKaleidoscopeRotation: { value: config.kaleidoscopeRotation || 0 },
+        uFeedbackZoom: { value: config.feedbackZoom || 0 },
+        uRipple: { value: config.ripple || 0 },
+        uPixelate: { value: config.pixelate || 0 },
+        uPosterize: { value: config.posterize || 0 },
+        uBackgroundMode: { value: config.backgroundMode || 0 },
       },
     });
 
@@ -253,12 +291,30 @@ export function useFractalRenderer(
       material.uniforms.uKaleidoscope.value = config.kaleidoscope || false;
       material.uniforms.uKaleidoscopeSegments.value = config.kaleidoscopeSegments || 6;
       material.uniforms.uChromaticAberration.value = config.chromaticAberration || 0;
+      // NEW PSYCHEDELIC UNIFORMS
+      material.uniforms.uTime.value = config.time || 0;
+      material.uniforms.uSpiralDistortion.value = config.spiralDistortion || 0;
+      material.uniforms.uRadialPulse.value = config.radialPulse || 0;
+      material.uniforms.uWaveDistortion.value = config.waveDistortion || 0;
+      material.uniforms.uTunnelEffect.value = config.tunnelEffect || 0;
+      material.uniforms.uPrismEffect.value = config.prismEffect || 0;
+      material.uniforms.uMirrorDimensions.value = config.mirrorDimensions || 0;
+      material.uniforms.uColorShift.value = config.colorShift || 0;
+      material.uniforms.uInvertPulse.value = config.invertPulse || 0;
+      material.uniforms.uEdgeGlow.value = config.edgeGlow || 0;
+      material.uniforms.uFractalNoise.value = config.fractalNoise || 0;
+      material.uniforms.uKaleidoscopeRotation.value = config.kaleidoscopeRotation || 0;
+      material.uniforms.uFeedbackZoom.value = config.feedbackZoom || 0;
+      material.uniforms.uRipple.value = config.ripple || 0;
+      material.uniforms.uPixelate.value = config.pixelate || 0;
+      material.uniforms.uPosterize.value = config.posterize || 0;
+      material.uniforms.uBackgroundMode.value = config.backgroundMode || 0;
     }
   }, [config]);
 
   // Clear accumulation buffer when system changes or infinite mode is toggled off
   // Track previous system to avoid clearing on iteration changes
-  const prevSystemRef = useRef<IFSSystem | null>(null);
+  const prevSystemRef = useRef<IFSSystem | MobiusSystem | null>(null);
 
   useEffect(() => {
     if (!rendererRef.current || !accumTargetRef.current) return;

@@ -19,11 +19,47 @@ export interface AffineMap {
 }
 
 /**
+ * Complex number represented as [real, imaginary]
+ */
+export type Complex = [number, number];
+
+/**
+ * Möbius transformation: f(z) = (az + b) / (cz + d)
+ * Works in the complex plane for hyperbolic/conformal mappings
+ */
+export interface MobiusMap {
+  // Complex coefficients [real, imag]
+  a: Complex;
+  b: Complex;
+  c: Complex;
+  d: Complex;
+
+  // Selection probability
+  probability: number;
+
+  // Optional color
+  color?: [number, number, number];
+}
+
+/**
+ * Möbius IFS System - uses complex Möbius transformations
+ */
+export interface MobiusSystem {
+  name: string;
+  maps: MobiusMap[];
+  scale?: number;
+  center?: Complex;
+}
+
+/**
  * Iterated Function System - collection of affine transformations
  */
 export interface IFSSystem {
   name: string;
   maps: AffineMap[];
+  // Normalization properties for consistent sizing during morphing
+  scale?: number;           // Scale factor to normalize size (default 1.0)
+  center?: [number, number]; // Center offset to normalize position (default [0, 0])
 }
 
 /**

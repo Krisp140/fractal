@@ -107,6 +107,47 @@ export const colorPalettes: ColorPalette[] = [
     low: "#d90429",
     high: "#06ffd5",
   },
+  // EXTRA TRIPPY PALETTES
+  {
+    name: "Machine Elves",
+    low: "#ff00aa",
+    high: "#00ff66",
+  },
+  {
+    name: "Hyperspace",
+    low: "#0000ff",
+    high: "#ffff00",
+  },
+  {
+    name: "Entity Contact",
+    low: "#ff3300",
+    high: "#00ffcc",
+  },
+  {
+    name: "Chrysanthemum",
+    low: "#ff0066",
+    high: "#66ff00",
+  },
+  {
+    name: "Void Walker",
+    low: "#220033",
+    high: "#ff00ff",
+  },
+  {
+    name: "Neural Storm",
+    low: "#003366",
+    high: "#ff6600",
+  },
+  {
+    name: "Ego Death",
+    low: "#000000",
+    high: "#ffffff",
+  },
+  {
+    name: "Breakthrough",
+    low: "#6600ff",
+    high: "#00ffaa",
+  },
 ];
 
 export const defaultPalette = colorPalettes[3]; // Nebula

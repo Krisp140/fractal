@@ -3,9 +3,10 @@ import { useState, useEffect, useRef } from 'react';
 import { FractalCanvas2D } from './components/FractalCanvas2D';
 import { FractalCanvas3D } from './components/FractalCanvas3D';
 import { presets, defaultPreset } from './core/presets';
+import { mobiusPresets, defaultMobiusPreset } from './core/mobiusPresets';
 import { colorPalettes, defaultPalette } from './core/colorPalettes';
 import { presets3D, defaultPreset3D } from './core/presets3D';
-import { IFSSystem } from './core/types';
+import { IFSSystem, MobiusSystem } from './core/types';
 import { morphIFSSystems } from './core/morphing';
 import { Leva } from 'leva';
 
@@ -40,8 +41,10 @@ function App() {
   const [dmtModeActive, setDmtModeActive] = useState(false);
   const [forceRandomPreset, setForceRandomPreset] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(defaultPreset.name);
+  const [selectedMobiusPreset, setSelectedMobiusPreset] = useState(defaultMobiusPreset.name);
   const [selectedPreset3D, setSelectedPreset3D] = useState(defaultPreset3D.name);
   const [renderMode, setRenderMode] = useState<'2d' | '3d'>('2d');
+  const [fractalType, setFractalType] = useState<'affine' | 'mobius'>('affine');
 
   // Use refs to persist zoom and pan - these NEVER reset
   const zoomRef = useRef(1.0);
@@ -75,10 +78,26 @@ function App() {
       },
     },
     '2D Settings': folder({
+      fractalType: {
+        value: 'Affine IFS',
+        options: ['Affine IFS', 'Möbius'],
+        label: 'Fractal Type',
+        render: (get) => get('mode') === '2D IFS',
+        onChange: (value) => {
+          setFractalType(value === 'Möbius' ? 'mobius' : 'affine');
+        },
+      },
       preset: {
         value: selectedPreset,
         options: ['Random', ...presets.map(p => p.name)],
-        render: (get) => get('mode') === '2D IFS',
+        render: (get) => get('mode') === '2D IFS' && get('2D Settings.fractalType') === 'Affine IFS',
+      },
+      mobiusPreset: {
+        value: selectedMobiusPreset,
+        options: mobiusPresets.map(p => p.name),
+        label: 'Möbius Preset',
+        render: (get) => get('mode') === '2D IFS' && get('2D Settings.fractalType') === 'Möbius',
+        onChange: (value) => setSelectedMobiusPreset(value),
       },
       randomize: button(() => {
         const randomSystem = generateRandomIFS();
@@ -86,7 +105,7 @@ function App() {
         setForceRandomPreset(true);
         console.log('Generated random fractal:', randomSystem);
       }, {
-        disabled: renderMode !== '2d',
+        disabled: renderMode !== '2d' || fractalType !== 'affine',
       }),
     }),
     '3D Settings': folder({
@@ -249,6 +268,118 @@ function App() {
       label: 'Chromatic Aberration',
       render: (get) => get('mode') === '2D IFS',
     },
+    // BACKGROUND EFFECTS
+    backgroundMode: {
+      value: 'Simple',
+      options: ['Simple', 'Plasma', 'Flow', 'Geometry', 'Starfield', 'Nebula'],
+      label: 'Background',
+      render: (get) => get('mode') === '2D IFS',
+    },
+    // NEW PSYCHEDELIC EFFECTS
+    'Psychedelic FX': folder({
+      spiralDistortion: {
+        value: 0,
+        min: 0,
+        max: 2,
+        step: 0.1,
+        label: 'Spiral Vortex',
+      },
+      radialPulse: {
+        value: 0,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        label: 'Breathing Pulse',
+      },
+      waveDistortion: {
+        value: 0,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        label: 'Wave Distortion',
+      },
+      tunnelEffect: {
+        value: 0,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        label: 'Tunnel Zoom',
+      },
+      ripple: {
+        value: 0,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        label: 'Ripples',
+      },
+      prismEffect: {
+        value: 0,
+        min: 0,
+        max: 5,
+        step: 0.25,
+        label: 'Prism Split',
+      },
+      colorShift: {
+        value: 0,
+        min: 0,
+        max: 5,
+        step: 0.25,
+        label: 'Hue Rotation',
+      },
+      invertPulse: {
+        value: 0,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        label: 'Inversion Pulse',
+      },
+      edgeGlow: {
+        value: 0,
+        min: 0,
+        max: 2,
+        step: 0.1,
+        label: 'Edge Glow',
+      },
+      fractalNoise: {
+        value: 0,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        label: 'Noise Warp',
+      },
+      feedbackZoom: {
+        value: 0,
+        min: 0,
+        max: 2,
+        step: 0.1,
+        label: 'Feedback Zoom',
+      },
+      hyperKaleidoscope: {
+        value: false,
+        label: 'Hyper Kaleidoscope',
+      },
+      kaleidoscopeRotation: {
+        value: 0,
+        min: 0,
+        max: 2,
+        step: 0.1,
+        label: 'K-Rotation Speed',
+      },
+      pixelate: {
+        value: 0,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        label: 'Pixelate',
+      },
+      posterize: {
+        value: 0,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        label: 'Posterize',
+      },
+    }, { collapsed: true, render: (get) => get('mode') === '2D IFS' }),
     zoom: {
       value: 1.0,
       min: 0.1,
@@ -312,25 +443,41 @@ function App() {
     },
   }));
 
-  // DMT mode overrides - only apply in 2D mode
+  // DMT mode overrides - only apply in 2D mode - SLOW DREAMY PSYCHEDELIA
   const activeConfig = (dmtModeActive && renderMode === '2d') ? {
     ...config,
     psychedelicMode: true,
     animationMode: true,
     colorCycle: true,
-    cycleSpeed: 3.0,
+    cycleSpeed: 0.8,  // MUCH slower color cycling
     infiniteAccumulation: true,
     bloom: true,
     bloomIntensity: 1.5,
+    bloomThreshold: 0.2,
     rotation: true,
     kaleidoscope: true,
     kaleidoscopeSegments: 8,
     trails: true,
-    trailDecay: 0.97,
-    chromaticAberration: 5.0,
+    trailDecay: 0.985,  // Longer trails
+    chromaticAberration: 4.0,
     morphMode: true,
-    morphSpeed: 2.0,
+    morphSpeed: 0.4,  // MUCH slower morphing - dreamy transitions
     colorPalette: 'DMT',
+    // SLOWER PSYCHEDELIC EFFECTS
+    spiralDistortion: 0.5,
+    radialPulse: 0.3,
+    waveDistortion: 0.2,
+    tunnelEffect: 0.25,
+    ripple: 0.2,
+    prismEffect: 1.5,
+    colorShift: 1.0,  // Slower hue rotation
+    invertPulse: 0.15,  // Subtle inversion
+    edgeGlow: 0.8,
+    fractalNoise: 0.15,
+    feedbackZoom: 0.3,
+    hyperKaleidoscope: true,
+    kaleidoscopeRotation: 0.2,  // Slow kaleidoscope rotation
+    backgroundMode: 'Nebula',   // Cosmic background for DMT mode
   } : config;
 
   // Animation loop for color cycling, auto-animation, and morphing
@@ -370,34 +517,44 @@ function App() {
     }
   }, [config.preset, selectedPreset]);
 
-  // Find the selected preset or use custom
-  const currentPreset = config.preset;
-  let selectedSystem = presets.find(p => p.name === currentPreset) || defaultPreset;
-  console.log('Selected preset:', currentPreset, '-> System:', selectedSystem.name);
+  // Find the selected system based on fractal type
+  let selectedSystem: IFSSystem | MobiusSystem;
+  let currentSystemType: 'affine' | 'mobius' = fractalType;
 
-  // Use custom random system if randomize was clicked
-  if (forceRandomPreset && customSystem) {
-    selectedSystem = customSystem;
-  } else if (currentPreset === 'Random' && customSystem) {
-    selectedSystem = customSystem;
-  } else if (currentPreset === 'Random' && !customSystem) {
-    const randomSys = generateRandomIFS();
-    setCustomSystem(randomSys);
-    selectedSystem = randomSys;
-  }
+  if (fractalType === 'mobius') {
+    // Möbius mode
+    selectedSystem = mobiusPresets.find(p => p.name === selectedMobiusPreset) || defaultMobiusPreset;
+    console.log('Selected Möbius preset:', selectedMobiusPreset, '-> System:', selectedSystem.name);
+  } else {
+    // Affine IFS mode
+    const currentPreset = config.preset;
+    selectedSystem = presets.find(p => p.name === currentPreset) || defaultPreset;
+    console.log('Selected preset:', currentPreset, '-> System:', selectedSystem.name);
 
-  // Apply fractal morphing if enabled
-  if (activeConfig.morphMode && !forceRandomPreset) {
-    const morphDuration = 10 / activeConfig.morphSpeed; // Seconds per transition
-    const totalTime = animationTime;
-    const cycleProgress = (totalTime % (morphDuration * presets.length)) / morphDuration;
-    const currentIndex = Math.floor(cycleProgress);
-    const nextIndex = (currentIndex + 1) % presets.length;
-    const t = cycleProgress - currentIndex;
+    // Use custom random system if randomize was clicked
+    if (forceRandomPreset && customSystem) {
+      selectedSystem = customSystem;
+    } else if (currentPreset === 'Random' && customSystem) {
+      selectedSystem = customSystem;
+    } else if (currentPreset === 'Random' && !customSystem) {
+      const randomSys = generateRandomIFS();
+      setCustomSystem(randomSys);
+      selectedSystem = randomSys;
+    }
 
-    const systemA = presets[currentIndex];
-    const systemB = presets[nextIndex];
-    selectedSystem = morphIFSSystems(systemA, systemB, t);
+    // Apply fractal morphing if enabled (only for affine)
+    if (activeConfig.morphMode && !forceRandomPreset) {
+      const morphDuration = 10 / activeConfig.morphSpeed; // Seconds per transition
+      const totalTime = animationTime;
+      const cycleProgress = (totalTime % (morphDuration * presets.length)) / morphDuration;
+      const currentIndex = Math.floor(cycleProgress);
+      const nextIndex = (currentIndex + 1) % presets.length;
+      const t = cycleProgress - currentIndex;
+
+      const systemA = presets[currentIndex];
+      const systemB = presets[nextIndex];
+      selectedSystem = morphIFSSystems(systemA, systemB, t);
+    }
   }
 
   // Convert hex colors to RGB arrays
@@ -468,29 +625,29 @@ function App() {
   if (activeConfig.animationMode || activeConfig.psychedelicMode) {
     const t = animationTime;
 
-    // Enhanced psychedelic mode
+    // Enhanced psychedelic mode - SLOW AND DREAMY
     if (activeConfig.psychedelicMode) {
-      // Breathing zoom effect
-      zoom = activeConfig.zoom * (1 + Math.sin(t * 0.8) * 0.5 + Math.cos(t * 1.3) * 0.3);
+      // Slow breathing zoom effect
+      zoom = activeConfig.zoom * (1 + Math.sin(t * 0.15) * 0.3 + Math.cos(t * 0.25) * 0.15);
 
-      // Complex spiral movement
-      const spiralRadius = 0.3 + Math.sin(t * 0.5) * 0.2;
-      panX = activeConfig.panX + Math.sin(t * 0.7) * spiralRadius + Math.cos(t * 1.5) * 0.1;
-      panY = activeConfig.panY + Math.cos(t * 0.7) * spiralRadius + Math.sin(t * 1.5) * 0.1;
+      // Gentle drifting movement
+      const spiralRadius = 0.15 + Math.sin(t * 0.1) * 0.1;
+      panX = activeConfig.panX + Math.sin(t * 0.12) * spiralRadius + Math.cos(t * 0.2) * 0.05;
+      panY = activeConfig.panY + Math.cos(t * 0.12) * spiralRadius + Math.sin(t * 0.2) * 0.05;
 
-      // Pulsing iterations for density changes
+      // Gentle density pulsing
       const iterBase = (activeConfig.baseIterationsK || 100) * 1000;
-      iterations = Math.floor(iterBase * (0.7 + Math.sin(t) * 0.3));
+      iterations = Math.floor(iterBase * (0.85 + Math.sin(t * 0.2) * 0.15));
 
-      // Breathing brightness
-      brightness = activeConfig.brightness * (0.8 + Math.sin(t * 1.2) * 0.4);
+      // Slow breathing brightness
+      brightness = activeConfig.brightness * (0.9 + Math.sin(t * 0.25) * 0.2);
 
-      // Pulsing bloom
-      bloomIntensity = activeConfig.bloomIntensity * (1 + Math.sin(t * 0.9) * 0.5);
+      // Gentle bloom pulsing
+      bloomIntensity = activeConfig.bloomIntensity * (1 + Math.sin(t * 0.18) * 0.3);
 
-      // Rotation
+      // Slow rotation
       if (activeConfig.rotation) {
-        rotation = t * 0.3;
+        rotation = t * 0.08;  // Much slower rotation
       }
     } else {
       // Regular animation mode
@@ -504,9 +661,43 @@ function App() {
     }
   }
 
+  // Calculate animated psychedelic effect values
+  let spiralDistortion = activeConfig.spiralDistortion || 0;
+  let radialPulse = activeConfig.radialPulse || 0;
+  let waveDistortion = activeConfig.waveDistortion || 0;
+  let tunnelEffect = activeConfig.tunnelEffect || 0;
+  let rippleEffect = activeConfig.ripple || 0;
+  let prismEffect = activeConfig.prismEffect || 0;
+  let colorShift = activeConfig.colorShift || 0;
+  let invertPulse = activeConfig.invertPulse || 0;
+  let edgeGlow = activeConfig.edgeGlow || 0;
+  let fractalNoise = activeConfig.fractalNoise || 0;
+  let feedbackZoom = activeConfig.feedbackZoom || 0;
+  let kaleidoscopeRotation = activeConfig.kaleidoscopeRotation || 0;
+
+  // In psychedelic mode, make effects pulse and vary - SLOW AND SMOOTH
+  if (activeConfig.psychedelicMode) {
+    const t = animationTime;
+    // Very slow pulsing spiral
+    spiralDistortion *= (0.6 + 0.4 * Math.sin(t * 0.12));
+    // Slow breathing
+    radialPulse *= (0.7 + 0.3 * Math.sin(t * 0.08));
+    // Gentle waves
+    waveDistortion *= (0.7 + 0.3 * Math.cos(t * 0.1));
+    // Slow tunnel pulse
+    tunnelEffect *= (0.6 + 0.4 * Math.sin(t * 0.06));
+    // Gentle ripples
+    rippleEffect *= (0.5 + 0.5 * Math.abs(Math.sin(t * 0.1)));
+    // Slow edge glow pulse
+    edgeGlow *= (0.7 + 0.3 * Math.sin(t * 0.15));
+    // Very slow kaleidoscope rotation variation
+    kaleidoscopeRotation *= (0.6 + 0.4 * Math.sin(t * 0.05));
+  }
+
   // 2D Renderer Config
   const rendererConfig2D = {
     system: selectedSystem,
+    systemType: currentSystemType,
     iterationsPerFrame: Math.max(1000, iterations),
     zoom,
     pan: [panX, panY] as [number, number],
@@ -525,6 +716,24 @@ function App() {
     chromaticAberration: activeConfig.chromaticAberration,
     adaptiveDetail: activeConfig.adaptiveDetail,
     maxIterations: (activeConfig.maxIterationsK || 1000) * 1000,
+    // NEW PSYCHEDELIC EFFECTS
+    time: animationTime,
+    spiralDistortion,
+    radialPulse,
+    waveDistortion,
+    tunnelEffect,
+    ripple: rippleEffect,
+    prismEffect,
+    colorShift,
+    invertPulse,
+    edgeGlow,
+    fractalNoise,
+    feedbackZoom,
+    mirrorDimensions: activeConfig.hyperKaleidoscope ? 2 : 0,
+    kaleidoscopeRotation,
+    pixelate: activeConfig.pixelate || 0,
+    posterize: activeConfig.posterize || 0,
+    backgroundMode: ['Simple', 'Plasma', 'Flow', 'Geometry', 'Starfield', 'Nebula'].indexOf(activeConfig.backgroundMode || 'Simple'),
   };
 
   // 3D Renderer Config

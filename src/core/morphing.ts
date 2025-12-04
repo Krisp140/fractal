@@ -57,8 +57,19 @@ export function morphIFSSystems(systemA: IFSSystem, systemB: IFSSystem, t: numbe
   const totalProb = maps.reduce((sum, map) => sum + map.probability, 0);
   maps.forEach(map => map.probability /= totalProb);
 
+  // Interpolate scale and center for smooth size transitions
+  const scaleA = systemA.scale ?? 1.0;
+  const scaleB = systemB.scale ?? 1.0;
+  const centerA = systemA.center ?? [0, 0];
+  const centerB = systemB.center ?? [0, 0];
+
   return {
     name: `${systemA.name} → ${systemB.name}`,
     maps,
+    scale: lerp(scaleA, scaleB, t),
+    center: [
+      lerp(centerA[0], centerB[0], t),
+      lerp(centerA[1], centerB[1], t),
+    ],
   };
 }
