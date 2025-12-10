@@ -18,6 +18,7 @@ export interface RaymarchRendererConfig {
   power?: number;
   scale?: number;
   foldingLimit?: number;
+  animateAmount?: number;
 }
 
 export interface RaymarchRendererControls {
@@ -89,6 +90,7 @@ export function useRaymarchRenderer(
         uGlow: { value: config.glow },
         uMaxIterations: { value: config.maxIterations },
         uBailout: { value: config.bailout },
+        uAnimateAmount: { value: config.animateAmount || 0.0 },
       },
     });
 
@@ -158,6 +160,7 @@ export function useRaymarchRenderer(
     material.uniforms.uGlow.value = config.glow;
     material.uniforms.uMaxIterations.value = config.maxIterations;
     material.uniforms.uBailout.value = config.bailout;
+    material.uniforms.uAnimateAmount.value = config.animateAmount || 0.0;
   }, [config]);
 
   // Update camera when config changes

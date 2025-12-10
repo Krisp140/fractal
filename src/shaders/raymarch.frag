@@ -13,8 +13,23 @@ uniform vec3 uColorHigh;
 uniform float uGlow;
 uniform int uMaxIterations;
 uniform float uBailout;
+uniform float uAnimateAmount; // 0 = no animation, 1 = full animation
 
 varying vec2 vUv;
+
+// 3D rotation matrices
+mat3 rotateX(float a) {
+    float c = cos(a), s = sin(a);
+    return mat3(1.0, 0.0, 0.0, 0.0, c, -s, 0.0, s, c);
+}
+mat3 rotateY(float a) {
+    float c = cos(a), s = sin(a);
+    return mat3(c, 0.0, s, 0.0, 1.0, 0.0, -s, 0.0, c);
+}
+mat3 rotateZ(float a) {
+    float c = cos(a), s = sin(a);
+    return mat3(c, -s, 0.0, s, c, 0.0, 0.0, 0.0, 1.0);
+}
 
 const int MAX_STEPS = 128;
 const int MAX_FRACTAL_ITERATIONS = 30;
@@ -79,21 +94,32 @@ float mandelboxDE(vec3 pos, float scale, float foldLimit) {
     return length(z) / abs(dr);
 }
 
-// Menger Sponge distance estimator
+// Box SDF
+float boxDE(vec3 p, vec3 b) {
+    vec3 d = abs(p) - b;
+    return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
+}
+
+// Menger Sponge distance estimator with animated rotation
 float mengerSpongeDE(vec3 p) {
-    float d = 1e10;
-    vec3 z = p;
-    float scale = 1.0;
+    // Animate the whole structure rotation
+    if (uAnimateAmount > 0.0) {
+        p = rotateY(uTime * 0.2 * uAnimateAmount) * p;
+        p = rotateX(uTime * 0.15 * uAnimateAmount) * p;
+    }
+
+    float d = boxDE(p, vec3(1.0));
+    float s = 1.0;
 
     for (int i = 0; i < 4; i++) {
-        vec3 a = mod(z * scale, 2.0) - 1.0;
-        scale *= 3.0;
+        vec3 a = mod(p * s, 2.0) - 1.0;
+        s *= 3.0;
         vec3 r = abs(1.0 - 3.0 * abs(a));
 
         float da = max(r.x, r.y);
         float db = max(r.y, r.z);
         float dc = max(r.z, r.x);
-        float c = (min(da, min(db, dc)) - 1.0) / scale;
+        float c = (min(da, min(db, dc)) - 1.0) / s;
 
         d = max(d, c);
     }

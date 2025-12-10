@@ -157,6 +157,19 @@ function App() {
         label: 'Max Iterations',
         render: (get) => get('mode') === '3D Raymarch',
       },
+      animate3D: {
+        value: false,
+        label: 'Animate Parameters',
+        render: (get) => get('mode') === '3D Raymarch',
+      },
+      animateSpeed3D: {
+        value: 1.0,
+        min: 0.1,
+        max: 3.0,
+        step: 0.1,
+        label: 'Animation Speed',
+        render: (get) => get('mode') === '3D Raymarch' && get('3D Settings.animate3D'),
+      },
     }),
     dmtMode: {
       ...button(() => {
@@ -481,9 +494,9 @@ function App() {
     backgroundMode: 'Nebula',   // Cosmic background for DMT mode
   } : config;
 
-  // Animation loop for color cycling, auto-animation, and morphing
+  // Animation loop for color cycling, auto-animation, morphing, and 3D parameter animation
   useEffect(() => {
-    if (!activeConfig.colorCycle && !activeConfig.animationMode && !activeConfig.psychedelicMode && !activeConfig.morphMode) return;
+    if (!activeConfig.colorCycle && !activeConfig.animationMode && !activeConfig.psychedelicMode && !activeConfig.morphMode && !config.animate3D) return;
 
     let animationFrameId: number;
     let lastTime = Date.now();
@@ -506,7 +519,7 @@ function App() {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [activeConfig.colorCycle, activeConfig.animationMode, activeConfig.psychedelicMode, activeConfig.morphMode, activeConfig.cycleSpeed, activeConfig.morphSpeed]);
+  }, [activeConfig.colorCycle, activeConfig.animationMode, activeConfig.psychedelicMode, activeConfig.morphMode, activeConfig.cycleSpeed, activeConfig.morphSpeed, config.animate3D]);
 
   // Sync preset selection from leva and handle forceRandomPreset reset
   useEffect(() => {
@@ -753,6 +766,23 @@ function App() {
 
   // 3D Renderer Config
   const selected3DFractal = presets3D.find(p => p.name === selectedPreset3D) || defaultPreset3D;
+
+  // Animate parameters based on fractal type
+  let power3D = config.power || 8.0;
+  let scale3D = config.scale || 2.0;
+  let foldingLimit3D = config.foldingLimit || 1.0;
+
+  if (config.animate3D) {
+    const t = animationTime * (config.animateSpeed3D || 1.0);
+
+    // Mandelbulb: sweep power 6-10
+    power3D = 8.0 + Math.sin(t * 0.3) * 2.0;
+
+    // Mandelbox: sweep scale 1.5-2.5 and folding 0.8-1.2
+    scale3D = 2.0 + Math.sin(t * 0.25) * 0.5;
+    foldingLimit3D = 1.0 + Math.sin(t * 0.4) * 0.2;
+  }
+
   const rendererConfig3D = {
     fractal: selected3DFractal,
     cameraPos: selected3DFractal.defaultCameraPos || [0, 0, 3] as [number, number, number],
@@ -762,9 +792,10 @@ function App() {
     glow: config.glow || 0,
     maxIterations: config.maxIterations3D || 15,
     bailout: 2.0,
-    power: config.power,
-    scale: config.scale,
-    foldingLimit: config.foldingLimit,
+    power: power3D,
+    scale: scale3D,
+    foldingLimit: foldingLimit3D,
+    animateAmount: config.animate3D ? (config.animateSpeed3D || 1.0) : 0.0,
   };
 
   return (
