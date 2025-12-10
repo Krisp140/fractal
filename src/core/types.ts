@@ -19,39 +19,6 @@ export interface AffineMap {
 }
 
 /**
- * Complex number represented as [real, imaginary]
- */
-export type Complex = [number, number];
-
-/**
- * Möbius transformation: f(z) = (az + b) / (cz + d)
- * Works in the complex plane for hyperbolic/conformal mappings
- */
-export interface MobiusMap {
-  // Complex coefficients [real, imag]
-  a: Complex;
-  b: Complex;
-  c: Complex;
-  d: Complex;
-
-  // Selection probability
-  probability: number;
-
-  // Optional color
-  color?: [number, number, number];
-}
-
-/**
- * Möbius IFS System - uses complex Möbius transformations
- */
-export interface MobiusSystem {
-  name: string;
-  maps: MobiusMap[];
-  scale?: number;
-  center?: Complex;
-}
-
-/**
  * Iterated Function System - collection of affine transformations
  */
 export interface IFSSystem {
@@ -60,6 +27,107 @@ export interface IFSSystem {
   // Normalization properties for consistent sizing during morphing
   scale?: number;           // Scale factor to normalize size (default 1.0)
   center?: [number, number]; // Center offset to normalize position (default [0, 0])
+}
+
+// ============================================
+// FRACTAL FLAMES
+// ============================================
+
+/**
+ * Variation types for fractal flames
+ * Each variation is a non-linear function applied after the affine transform
+ */
+export enum VariationType {
+  Linear = 0,
+  Sinusoidal = 1,
+  Spherical = 2,
+  Swirl = 3,
+  Horseshoe = 4,
+  Polar = 5,
+  Handkerchief = 6,
+  Heart = 7,
+  Disc = 8,
+  Spiral = 9,
+  Hyperbolic = 10,
+  Diamond = 11,
+  Ex = 12,
+  Julia = 13,
+  Bent = 14,
+  Waves = 15,
+  Fisheye = 16,
+  Popcorn = 17,
+  Exponential = 18,
+  Power = 19,
+  Cosine = 20,
+  Rings = 21,
+  Fan = 22,
+  Blob = 23,
+  PDJ = 24,
+  Fan2 = 25,
+  Rings2 = 26,
+  Eyefish = 27,
+  Bubble = 28,
+  Cylinder = 29,
+  Tangent = 30,
+  Cross = 31,
+  Noise = 32,
+  Curl = 33,
+  Rectangles = 34,
+  Arch = 35,
+}
+
+/**
+ * Variation with weight - allows blending multiple variations
+ */
+export interface WeightedVariation {
+  type: VariationType;
+  weight: number;
+  // Variation-specific parameters
+  params?: Record<string, number>;
+}
+
+/**
+ * Flame transform - affine + variations + color
+ */
+export interface FlameTransform {
+  // Affine pre-transform coefficients [a, b, c, d, e, f]
+  // x' = a*x + b*y + e
+  // y' = c*x + d*y + f
+  coefs: [number, number, number, number, number, number];
+
+  // Optional post-transform (applied after variations)
+  post?: [number, number, number, number, number, number];
+
+  // Variations to apply (can blend multiple)
+  variations: WeightedVariation[];
+
+  // Selection probability
+  probability: number;
+
+  // Color index (0-1) for palette lookup
+  colorIndex: number;
+
+  // Color speed - how fast color evolves
+  colorSpeed?: number;
+}
+
+/**
+ * Fractal Flame System
+ */
+export interface FlameSystem {
+  name: string;
+  transforms: FlameTransform[];
+
+  // Final transform (applied to all points at the end)
+  finalTransform?: FlameTransform;
+
+  // Rendering parameters
+  scale?: number;
+  center?: [number, number];
+  rotate?: number;  // Global rotation in radians
+
+  // Palette (array of RGB colors to interpolate)
+  palette?: [number, number, number][];
 }
 
 /**

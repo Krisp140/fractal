@@ -1,4 +1,5 @@
-import { IFSSystem, AffineMap, MobiusSystem, MobiusMap, Complex } from './types';
+import { IFSSystem, AffineMap, FlameSystem, FlameTransform } from './types';
+import { applyVariations, applyAffine } from './flameVariations';
 
 /**
  * Applies an affine transformation to a point
@@ -112,122 +113,168 @@ export function generatePointBatch(
 }
 
 // ============================================
-// MÖBIUS TRANSFORMATIONS
+// FRACTAL FLAMES
 // ============================================
 
 /**
- * Complex number operations
+ * Default color palette for flames (fire-like gradient)
  */
-function complexMul(a: Complex, b: Complex): Complex {
-  return [
-    a[0] * b[0] - a[1] * b[1],
-    a[0] * b[1] + a[1] * b[0]
-  ];
-}
+const defaultFlamePalette: [number, number, number][] = [
+  [0, 0, 0],       // Black
+  [0.5, 0, 0],     // Dark red
+  [1, 0.2, 0],     // Orange-red
+  [1, 0.5, 0],     // Orange
+  [1, 0.8, 0.2],   // Yellow-orange
+  [1, 1, 0.5],     // Light yellow
+  [1, 1, 1],       // White
+];
 
-function complexAdd(a: Complex, b: Complex): Complex {
-  return [a[0] + b[0], a[1] + b[1]];
-}
+/**
+ * Interpolate color from palette based on index (0-1)
+ */
+function samplePalette(
+  palette: [number, number, number][],
+  index: number
+): [number, number, number] {
+  // Wrap index to 0-1
+  const t = ((index % 1) + 1) % 1;
+  const scaledT = t * (palette.length - 1);
+  const i = Math.floor(scaledT);
+  const frac = scaledT - i;
 
-function complexDiv(a: Complex, b: Complex): Complex {
-  const denom = b[0] * b[0] + b[1] * b[1];
-  if (denom < 1e-10) {
-    // Avoid division by zero - return large value
-    return [1000, 1000];
-  }
+  const c0 = palette[Math.min(i, palette.length - 1)];
+  const c1 = palette[Math.min(i + 1, palette.length - 1)];
+
   return [
-    (a[0] * b[0] + a[1] * b[1]) / denom,
-    (a[1] * b[0] - a[0] * b[1]) / denom
+    c0[0] + frac * (c1[0] - c0[0]),
+    c0[1] + frac * (c1[1] - c0[1]),
+    c0[2] + frac * (c1[2] - c0[2]),
   ];
 }
 
 /**
- * Apply Möbius transformation: f(z) = (az + b) / (cz + d)
+ * Select random flame transform based on probability
  */
-function applyMobius(z: Complex, map: MobiusMap): Complex {
-  const az = complexMul(map.a, z);
-  const azPlusB = complexAdd(az, map.b);
-
-  const cz = complexMul(map.c, z);
-  const czPlusD = complexAdd(cz, map.d);
-
-  return complexDiv(azPlusB, czPlusD);
-}
-
-/**
- * Select random Möbius map based on probability
- */
-function selectRandomMobiusMap(maps: MobiusMap[]): MobiusMap {
+function selectRandomFlameTransform(transforms: FlameTransform[]): FlameTransform {
   const rand = Math.random();
   let cumulative = 0;
 
-  for (const map of maps) {
-    cumulative += map.probability;
+  for (const transform of transforms) {
+    cumulative += transform.probability;
     if (rand < cumulative) {
-      return map;
+      return transform;
     }
   }
 
-  return maps[maps.length - 1];
+  return transforms[transforms.length - 1];
 }
 
 /**
- * Generator for Möbius chaos game
+ * Apply a complete flame transform: affine -> variations -> post
  */
-export function* mobiusChaosGame(
-  system: MobiusSystem,
-  iterations: number,
-  skipInitial = 100
-): Generator<{ pos: Complex; color?: [number, number, number] }> {
-  // Start at a random point in the complex plane
-  let z: Complex = [Math.random() * 2 - 1, Math.random() * 2 - 1];
+function applyFlameTransform(
+  x: number,
+  y: number,
+  transform: FlameTransform
+): [number, number] {
+  // 1. Apply pre-affine transform
+  let [tx, ty] = applyAffine(x, y, transform.coefs);
 
-  // Skip initial iterations
+  // 2. Apply variations (weighted sum)
+  [tx, ty] = applyVariations(tx, ty, transform.variations);
+
+  // 3. Apply post-affine transform if specified
+  if (transform.post) {
+    [tx, ty] = applyAffine(tx, ty, transform.post);
+  }
+
+  return [tx, ty];
+}
+
+/**
+ * Generator for fractal flame chaos game
+ */
+export function* flameChaosGame(
+  system: FlameSystem,
+  iterations: number,
+  skipInitial = 20
+): Generator<{ pos: [number, number]; color: [number, number, number] }> {
+  // Start at a random point
+  let x = Math.random() * 2 - 1;
+  let y = Math.random() * 2 - 1;
+  let colorIndex = Math.random(); // Color evolves through iterations
+
+  const palette = system.palette || defaultFlamePalette;
+  const globalRotate = system.rotate || 0;
+  const cos = Math.cos(globalRotate);
+  const sin = Math.sin(globalRotate);
+
+  // Skip initial iterations for convergence
   for (let i = 0; i < skipInitial; i++) {
-    const map = selectRandomMobiusMap(system.maps);
-    z = applyMobius(z, map);
+    const transform = selectRandomFlameTransform(system.transforms);
+    [x, y] = applyFlameTransform(x, y, transform);
+
+    // Evolve color
+    const colorSpeed = transform.colorSpeed ?? 0.5;
+    colorIndex = (colorIndex + transform.colorIndex) * colorSpeed + (1 - colorSpeed) * colorIndex;
 
     // Keep in bounds
-    const mag = Math.sqrt(z[0] * z[0] + z[1] * z[1]);
-    if (mag > 10) {
-      z = [z[0] / mag * 2, z[1] / mag * 2];
+    const mag = Math.sqrt(x * x + y * y);
+    if (mag > 100 || !isFinite(x) || !isFinite(y)) {
+      x = Math.random() * 2 - 1;
+      y = Math.random() * 2 - 1;
     }
   }
 
   // Generate points
   for (let i = 0; i < iterations; i++) {
-    const map = selectRandomMobiusMap(system.maps);
-    z = applyMobius(z, map);
+    const transform = selectRandomFlameTransform(system.transforms);
+    [x, y] = applyFlameTransform(x, y, transform);
 
-    // Keep in bounds - Möbius can send points to infinity
-    const mag = Math.sqrt(z[0] * z[0] + z[1] * z[1]);
-    if (mag > 10) {
-      z = [z[0] / mag * 2, z[1] / mag * 2];
+    // Apply final transform if exists
+    if (system.finalTransform) {
+      [x, y] = applyFlameTransform(x, y, system.finalTransform);
     }
 
-    if (isFinite(z[0]) && isFinite(z[1])) {
-      yield { pos: z, color: map.color };
+    // Evolve color
+    const colorSpeed = transform.colorSpeed ?? 0.5;
+    colorIndex = transform.colorIndex * colorSpeed + (1 - colorSpeed) * colorIndex;
+
+    // Keep in bounds
+    const mag = Math.sqrt(x * x + y * y);
+    if (mag > 100 || !isFinite(x) || !isFinite(y)) {
+      x = Math.random() * 2 - 1;
+      y = Math.random() * 2 - 1;
+      continue; // Skip this point
     }
+
+    // Apply global rotation
+    const rx = x * cos - y * sin;
+    const ry = x * sin + y * cos;
+
+    // Sample color from palette
+    const color = samplePalette(palette, colorIndex);
+
+    yield { pos: [rx, ry], color };
   }
 }
 
 /**
- * Generate Möbius points as Float32Arrays
+ * Generate flame points as Float32Arrays
  */
-export function generateMobiusPointBatch(
-  system: MobiusSystem,
+export function generateFlamePointBatch(
+  system: FlameSystem,
   count: number
-): { positions: Float32Array; colors?: Float32Array } {
-  console.log('[MobiusChaos] Generating points for:', system.name);
+): { positions: Float32Array; colors: Float32Array } {
+  console.log('[FlameChaos] Generating points for:', system.name);
   const positions = new Float32Array(count * 2);
-  const hasColors = system.maps.some(m => m.color !== undefined);
-  const colors = hasColors ? new Float32Array(count * 3) : undefined;
+  const colors = new Float32Array(count * 3);
 
-  const scale = system.scale ?? 1.0;
+  const scale = system.scale ?? 0.5;
   const centerX = system.center?.[0] ?? 0;
   const centerY = system.center?.[1] ?? 0;
 
-  const generator = mobiusChaosGame(system, count);
+  const generator = flameChaosGame(system, count);
 
   let posIndex = 0;
   let colorIndex = 0;
@@ -236,15 +283,9 @@ export function generateMobiusPointBatch(
     positions[posIndex++] = (pos[0] - centerX) * scale;
     positions[posIndex++] = (pos[1] - centerY) * scale;
 
-    if (colors && color) {
-      colors[colorIndex++] = color[0];
-      colors[colorIndex++] = color[1];
-      colors[colorIndex++] = color[2];
-    } else if (colors) {
-      colors[colorIndex++] = 1.0;
-      colors[colorIndex++] = 1.0;
-      colors[colorIndex++] = 1.0;
-    }
+    colors[colorIndex++] = color[0];
+    colors[colorIndex++] = color[1];
+    colors[colorIndex++] = color[2];
   }
 
   return { positions, colors };

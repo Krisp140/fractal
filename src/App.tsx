@@ -3,11 +3,11 @@ import { useState, useEffect, useRef } from 'react';
 import { FractalCanvas2D } from './components/FractalCanvas2D';
 import { FractalCanvas3D } from './components/FractalCanvas3D';
 import { presets, defaultPreset } from './core/presets';
-import { mobiusPresets, defaultMobiusPreset } from './core/mobiusPresets';
+import { flamePresets, defaultFlamePreset } from './core/flamePresets';
 import { colorPalettes, defaultPalette } from './core/colorPalettes';
 import { presets3D, defaultPreset3D } from './core/presets3D';
-import { IFSSystem, MobiusSystem } from './core/types';
-import { morphIFSSystems } from './core/morphing';
+import { IFSSystem, FlameSystem } from './core/types';
+import { morphIFSSystems, morphFlameSystems } from './core/morphing';
 import { Leva } from 'leva';
 
 // Generate random IFS system
@@ -41,10 +41,10 @@ function App() {
   const [dmtModeActive, setDmtModeActive] = useState(false);
   const [forceRandomPreset, setForceRandomPreset] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(defaultPreset.name);
-  const [selectedMobiusPreset, setSelectedMobiusPreset] = useState(defaultMobiusPreset.name);
   const [selectedPreset3D, setSelectedPreset3D] = useState(defaultPreset3D.name);
+  const [selectedFlamePreset, setSelectedFlamePreset] = useState(defaultFlamePreset.name);
   const [renderMode, setRenderMode] = useState<'2d' | '3d'>('2d');
-  const [fractalType, setFractalType] = useState<'affine' | 'mobius'>('affine');
+  const [fractalType, setFractalType] = useState<'affine' | 'flame'>('affine');
 
   // Use refs to persist zoom and pan - these NEVER reset
   const zoomRef = useRef(1.0);
@@ -80,11 +80,12 @@ function App() {
     '2D Settings': folder({
       fractalType: {
         value: 'Affine IFS',
-        options: ['Affine IFS', 'Möbius'],
+        options: ['Affine IFS', 'Flame'],
         label: 'Fractal Type',
         render: (get) => get('mode') === '2D IFS',
         onChange: (value) => {
-          setFractalType(value === 'Möbius' ? 'mobius' : 'affine');
+          if (value === 'Flame') setFractalType('flame');
+          else setFractalType('affine');
         },
       },
       preset: {
@@ -92,12 +93,12 @@ function App() {
         options: ['Random', ...presets.map(p => p.name)],
         render: (get) => get('mode') === '2D IFS' && get('2D Settings.fractalType') === 'Affine IFS',
       },
-      mobiusPreset: {
-        value: selectedMobiusPreset,
-        options: mobiusPresets.map(p => p.name),
-        label: 'Möbius Preset',
-        render: (get) => get('mode') === '2D IFS' && get('2D Settings.fractalType') === 'Möbius',
-        onChange: (value) => setSelectedMobiusPreset(value),
+      flamePreset: {
+        value: selectedFlamePreset,
+        options: flamePresets.map(p => p.name),
+        label: 'Flame Preset',
+        render: (get) => get('mode') === '2D IFS' && get('2D Settings.fractalType') === 'Flame',
+        onChange: (value) => setSelectedFlamePreset(value),
       },
       randomize: button(() => {
         const randomSystem = generateRandomIFS();
@@ -518,13 +519,27 @@ function App() {
   }, [config.preset, selectedPreset]);
 
   // Find the selected system based on fractal type
-  let selectedSystem: IFSSystem | MobiusSystem;
-  let currentSystemType: 'affine' | 'mobius' = fractalType;
+  let selectedSystem: IFSSystem | FlameSystem;
+  let currentSystemType: 'affine' | 'flame' = fractalType;
 
-  if (fractalType === 'mobius') {
-    // Möbius mode
-    selectedSystem = mobiusPresets.find(p => p.name === selectedMobiusPreset) || defaultMobiusPreset;
-    console.log('Selected Möbius preset:', selectedMobiusPreset, '-> System:', selectedSystem.name);
+  if (fractalType === 'flame') {
+    // Flame mode
+    selectedSystem = flamePresets.find(p => p.name === selectedFlamePreset) || defaultFlamePreset;
+    console.log('Selected Flame preset:', selectedFlamePreset, '-> System:', selectedSystem.name);
+
+    // Apply fractal morphing if enabled (for flames)
+    if (activeConfig.morphMode) {
+      const morphDuration = 10 / activeConfig.morphSpeed; // Seconds per transition
+      const totalTime = animationTime;
+      const cycleProgress = (totalTime % (morphDuration * flamePresets.length)) / morphDuration;
+      const currentIndex = Math.floor(cycleProgress);
+      const nextIndex = (currentIndex + 1) % flamePresets.length;
+      const t = cycleProgress - currentIndex;
+
+      const systemA = flamePresets[currentIndex];
+      const systemB = flamePresets[nextIndex];
+      selectedSystem = morphFlameSystems(systemA, systemB, t);
+    }
   } else {
     // Affine IFS mode
     const currentPreset = config.preset;

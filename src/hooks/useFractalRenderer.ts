@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { IFSSystem, MobiusSystem } from '../core/types';
-import { generatePointBatch, generateMobiusPointBatch } from '../core/chaosGame';
+import { IFSSystem, FlameSystem } from '../core/types';
+import { generatePointBatch, generateFlamePointBatch } from '../core/chaosGame';
 
 // Import shaders as strings
 import pointVertexShader from '../shaders/point.vert';
@@ -10,8 +10,8 @@ import commonVertexShader from '../shaders/common.vert';
 import tonemapFragmentShader from '../shaders/tonemap.frag';
 
 export interface FractalRendererConfig {
-  system: IFSSystem | MobiusSystem;
-  systemType?: 'affine' | 'mobius';  // Type of system (default: 'affine')
+  system: IFSSystem | FlameSystem;
+  systemType?: 'affine' | 'flame';  // Type of system (default: 'affine')
   iterationsPerFrame: number;
   zoom: number;
   pan: [number, number];
@@ -147,9 +147,18 @@ export function useFractalRenderer(
     console.log('System:', config.system.name, 'type:', config.systemType || 'affine');
 
     // Generate points using the appropriate chaos game
-    const { positions: points2D, colors } = config.systemType === 'mobius'
-      ? generateMobiusPointBatch(config.system as MobiusSystem, actualIterations)
-      : generatePointBatch(config.system as IFSSystem, actualIterations);
+    let points2D: Float32Array;
+    let colors: Float32Array | undefined;
+
+    if (config.systemType === 'flame') {
+      const result = generateFlamePointBatch(config.system as FlameSystem, actualIterations);
+      points2D = result.positions;
+      colors = result.colors;
+    } else {
+      const result = generatePointBatch(config.system as IFSSystem, actualIterations);
+      points2D = result.positions;
+      colors = result.colors;
+    }
     const points3D = new Float32Array(points2D.length / 2 * 3);
     for (let i = 0; i < points2D.length / 2; i++) {
       points3D[i * 3] = points2D[i * 2];      // x
@@ -314,7 +323,7 @@ export function useFractalRenderer(
 
   // Clear accumulation buffer when system changes or infinite mode is toggled off
   // Track previous system to avoid clearing on iteration changes
-  const prevSystemRef = useRef<IFSSystem | MobiusSystem | null>(null);
+  const prevSystemRef = useRef<IFSSystem | FlameSystem | null>(null);
 
   useEffect(() => {
     if (!rendererRef.current || !accumTargetRef.current) return;
